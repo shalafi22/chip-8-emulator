@@ -26,10 +26,73 @@ pub struct Chip8 {
 
     //Stack, allows max 16 subroutines
     pub stack: [u16; 16],
+
+    //Display
+    pub display: Chip8Display
 }
 
 pub struct Chip8Display {
     pub pixels: [[u8; 8];32]
+}
+
+pub struct Sprite {
+    bytes: [u8; 15],
+    size: usize
+}
+
+const ZERO_SPRITE: Sprite = Sprite {bytes: [0xF0, 0x90, 0x90, 0x90, 0xF0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], size: 5};
+const ONE_SPRITE: Sprite = Sprite {bytes: [0x20, 0x60, 0x20, 0x20, 0x70, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], size: 5};
+const TWO_SPRITE: Sprite = Sprite {bytes: [0xF0, 0x10, 0xF0, 0x80, 0xF0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], size: 5};
+const THREE_SPRITE: Sprite = Sprite {bytes: [0xF0, 0x10, 0xF0, 0x10, 0xF0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], size: 5};
+const FOUR_SPRITE: Sprite = Sprite {bytes: [0x90, 0x90, 0xF0, 0x10, 0x10, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], size: 5};
+const FIVE_SPRITE: Sprite = Sprite {bytes: [0xF0, 0x80, 0xF0, 0x10, 0xF0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], size: 5};
+const SIX_SPRITE: Sprite = Sprite {bytes: [0xF0, 0x80, 0xF0, 0x90, 0xF0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], size: 5};
+const SEVEN_SPRITE: Sprite = Sprite {bytes: [0xF0, 0x10, 0x20, 0x40, 0x40, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], size: 5};
+const EIGHT_SPRITE: Sprite = Sprite {bytes: [0xF0, 0x90, 0xF0, 0x90, 0xF0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], size: 5};
+const NINE_SPRITE: Sprite = Sprite {bytes: [0xF0, 0x90, 0xF0, 0x10, 0xF0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], size: 5};
+const A_SPRITE: Sprite = Sprite {bytes: [0xF0, 0x90, 0xF0, 0x90, 0x90, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], size: 5};
+const B_SPRITE: Sprite = Sprite {bytes: [0xE0, 0x90, 0xE0, 0x90, 0xE0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], size: 5};
+const C_SPRITE: Sprite = Sprite {bytes: [0xF0, 0x80, 0x80, 0x80, 0xF0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], size: 5};
+const D_SPRITE: Sprite = Sprite {bytes: [0xE0, 0x90, 0x90, 0x90, 0xE0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], size: 5};
+const E_SPRITE: Sprite = Sprite {bytes: [0xF0, 0x80, 0xF0, 0x80, 0xF0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], size: 5};
+const F_SPRITE: Sprite = Sprite {bytes: [0xF0, 0x80, 0xF0, 0x80, 0x80, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], size: 5};
+
+const SPRITE_PRESET: [Sprite; 16] = [ZERO_SPRITE, ONE_SPRITE, TWO_SPRITE, THREE_SPRITE, FOUR_SPRITE, FIVE_SPRITE, SIX_SPRITE, SEVEN_SPRITE,
+                                    EIGHT_SPRITE, NINE_SPRITE, A_SPRITE, B_SPRITE, C_SPRITE, D_SPRITE, E_SPRITE, F_SPRITE];
+
+impl Chip8 {
+    pub fn new_default() -> Chip8 {
+        let memory: [u8; 4096] = [0; 4096];
+        let Vx: [u8; 16] = [0; 16];
+        let I: u16 = 0;
+        let delay_timer: u8 = 0;
+        let sound_timer: u8 = 0;
+        let PC: u16 = 0;
+        let SP: u8 = 0;
+        let stack: [u16; 16] = [0; 16];
+        let display: Chip8Display = Chip8Display { pixels: [[0; 8]; 32] };
+        let mut chip = Chip8 {
+            memory, Vx, I, delay_timer, sound_timer, PC, SP, stack, display
+        };
+        let mut location = 0x50;
+        for sprite in SPRITE_PRESET {
+            chip.load_sprite(sprite, location);
+            location += 1;
+        }
+        chip
+    }
+
+    fn load_sprite(&mut self, sprite: Sprite, location: usize) {
+        let mut i: usize = 0;
+        while i < sprite.size {
+            self.memory[location] = sprite.bytes[i];
+            i += 1;
+        }
+    }
+
+    pub fn turn_on_display(&self) {
+        open_window(&self.display);
+    }
 }
 
 /// open sdl2 window and create a new chip8 display
@@ -68,7 +131,7 @@ fn open_window(disp: &Chip8Display) {
             }
         }
 
-        
+        //60 FPS        
         std::thread::sleep(Duration::new(0, 1_000_000_000u32 / 60));
     }
 }
@@ -101,8 +164,11 @@ fn draw_display_to_window(canvas: &mut WindowCanvas, disp: &Chip8Display) {
 }
 
 fn main() {
-    let my_disp = Chip8Display {
-        pixels: [[0xF3; 8]; 32]
-    };
-    open_window(&my_disp);
+    let mut my_chip8 = Chip8::new_default();
+    my_chip8.turn_on_display();
+
+    println!("DEBUG: 0x50: {}", my_chip8.memory[0x50]);
+    println!("DEBUG: 0x53: {}", my_chip8.memory[0x53]);
+    println!("DEBUG: 0x54: {}", my_chip8.memory[0x54]);
+    println!("DEBUG: 0x56: {}", my_chip8.memory[0x56]);
 }
