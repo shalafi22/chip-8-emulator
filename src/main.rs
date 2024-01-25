@@ -5,6 +5,9 @@ use sdl2::render::WindowCanvas;
 use std::time::Duration;
 use sdl2::rect;
 
+
+//TODO: refactor code
+
 pub struct Chip8 {
     //The main memory of the machine, 4KB
     pub memory: [u8; 4096],
@@ -31,6 +34,8 @@ pub struct Chip8 {
     pub display: Chip8Display
 }
 
+//TODO: pixels represented as enum with variants On, Off.
+//      Display is [[Pixel; 64]; 32]
 pub struct Chip8Display {
     pub pixels: [[u8; 8];32]
 }
