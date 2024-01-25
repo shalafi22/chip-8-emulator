@@ -1,0 +1,1 @@
+Appropriate SDL2 libraries must be installed for the SDL2 dependency to work correctly
