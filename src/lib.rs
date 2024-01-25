@@ -12,7 +12,7 @@ use crate::chip8::{Chip8, Chip8Display};
 /// open sdl2 window and create a new chip8 display
 /// draw display to screen in a loop
 /// display might onl be updated when necessary instead of 60 FPS for better optimization
-pub fn open_window() {
+pub fn open_window() -> Result<(), std::io::Error> {
     let sdl_context = sdl2::init().unwrap();
     let video_subsystem = sdl_context.video().unwrap();
 
@@ -30,6 +30,10 @@ pub fn open_window() {
     let mut my_chip8 = Chip8::new_default();
     my_chip8.draw_sprite_in_mem_to_x_y(0x50, 0, 0, 5, &mut canvas);
     my_chip8.draw_sprite_in_mem_to_x_y(0x55, 9, 0, 5, &mut canvas);
+    match my_chip8.load_file_to_mem() {
+        Err(e) => return Err(e),
+        _ => {}
+    };
 
     'running: loop {
         for event in event_pump.poll_iter() {
@@ -53,6 +57,7 @@ pub fn open_window() {
         //60 FPS        
         std::thread::sleep(Duration::new(0, 1_000_000_000u32 / 60));
     }
+    Ok(())
 }
 
 
@@ -80,3 +85,4 @@ fn draw_display_to_window(canvas: &mut WindowCanvas, disp: &Chip8Display) {
     }
     canvas.present();
 }
+

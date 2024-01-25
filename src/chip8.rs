@@ -1,3 +1,5 @@
+use std::{fs::File, io::{BufReader, Error, Read}};
+
 use crate::draw_display_to_window;
 use sdl2::render::WindowCanvas;
 
@@ -74,6 +76,30 @@ impl Chip8 {
         }
 
         draw_display_to_window(canvas, &self.display);
+    }
+
+
+    /// loads .ch8 file under roms to the memory of the emulator
+    pub fn load_file_to_mem(&mut self) -> Result<(), Error> {
+        //TODO: get filename from user
+        let filename = "./roms/maze.ch8";
+        let f = match File::open(filename) {
+            Ok(f) => {f},
+            Err(e) => {return Err(e)}
+        };
+        let reader = BufReader::new(f);
+        let reader_bytes = reader.bytes();
+        let mut location: usize = 0x200;
+        for byte in reader_bytes {
+            match byte {
+                Ok(b) => {
+                    self.memory[location] = b;
+                    location += 1;
+                },
+                Err(e) => println!("Error reading file: {}", e)
+            }
+        }
+        Ok(())
     }
 }
 
