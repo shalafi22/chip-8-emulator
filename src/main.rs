@@ -90,15 +90,24 @@ impl Chip8 {
         }
     }
 
-    pub fn turn_on_display(&self) {
-        open_window(&self.display);
+
+    pub fn draw_sprite_in_mem_to_x_y(&mut self, mut sprite_loc: usize, x: usize, mut y: usize,mut n: usize, canvas: &mut WindowCanvas) {
+        while n > 0 {
+            let byte = self.memory[sprite_loc];
+            self.display.pixels[y][x % 8] = byte;
+            n -= 1;
+            sprite_loc += 1;
+            y += 1;
+        }
+
+        draw_display_to_window(canvas, &self.display);
     }
 }
 
 /// open sdl2 window and create a new chip8 display
 /// draw display to screen in a loop
 /// display might onl be updated when necessary instead of 60 FPS for better optimization
-fn open_window(disp: &Chip8Display) {
+fn open_window() {
     let sdl_context = sdl2::init().unwrap();
     let video_subsystem = sdl_context.video().unwrap();
 
@@ -112,6 +121,10 @@ fn open_window(disp: &Chip8Display) {
     canvas.set_draw_color(Color::RGB(0, 0, 0));
     canvas.clear();
     let mut event_pump = sdl_context.event_pump().unwrap();
+
+    let mut my_chip8 = Chip8::new_default();
+    my_chip8.draw_sprite_in_mem_to_x_y(0x50, 0, 0, 5, &mut canvas);
+
     'running: loop {
         for event in event_pump.poll_iter() {
             match event {
@@ -125,7 +138,7 @@ fn open_window(disp: &Chip8Display) {
                     canvas.present();
                 },
                 Event::KeyDown { keycode: Some(Keycode::B), .. } => {
-                    draw_display_to_window(&mut canvas, &disp);
+                    draw_display_to_window(&mut canvas, &my_chip8.display);
                 }
                 _ => {}
             }
@@ -164,11 +177,5 @@ fn draw_display_to_window(canvas: &mut WindowCanvas, disp: &Chip8Display) {
 }
 
 fn main() {
-    let mut my_chip8 = Chip8::new_default();
-    my_chip8.turn_on_display();
-
-    println!("DEBUG: 0x50: {}", my_chip8.memory[0x50]);
-    println!("DEBUG: 0x53: {}", my_chip8.memory[0x53]);
-    println!("DEBUG: 0x54: {}", my_chip8.memory[0x54]);
-    println!("DEBUG: 0x56: {}", my_chip8.memory[0x56]);
+    open_window();
 }
