@@ -77,24 +77,24 @@ impl Chip8 {
         let mut location = 0x50;
         for sprite in SPRITE_PRESET {
             chip.load_sprite(sprite, location);
-            location += 1;
+            location += 5;
         }
         chip
     }
 
-    fn load_sprite(&mut self, sprite: Sprite, location: usize) {
+    fn load_sprite(&mut self, sprite: Sprite,mut location: usize) {
         let mut i: usize = 0;
         while i < sprite.size {
             self.memory[location] = sprite.bytes[i];
             i += 1;
+            location += 1;
         }
     }
 
 
-    pub fn draw_sprite_in_mem_to_x_y(&mut self, mut sprite_loc: usize, x: usize, mut y: usize,mut n: usize, canvas: &mut WindowCanvas) {
+    pub fn draw_sprite_in_mem_to_x_y(&mut self, mut sprite_loc: usize, x: usize, mut y: usize, mut n: usize, canvas: &mut WindowCanvas) {
         while n > 0 {
-            let byte = self.memory[sprite_loc];
-            self.display.pixels[y][x % 8] = byte;
+            self.display.pixels[y][x % 8] = self.memory[sprite_loc];
             n -= 1;
             sprite_loc += 1;
             y += 1;
@@ -124,6 +124,15 @@ fn open_window() {
 
     let mut my_chip8 = Chip8::new_default();
     my_chip8.draw_sprite_in_mem_to_x_y(0x50, 0, 0, 5, &mut canvas);
+    my_chip8.draw_sprite_in_mem_to_x_y(0x55, 9, 0, 5, &mut canvas);
+
+    //DEBUG
+    println!("0x50: {}", my_chip8.memory[0x50]);
+    println!("0x51: {}", my_chip8.memory[0x51]);
+    println!("0x52: {}", my_chip8.memory[0x52]);
+    println!("0x53: {}", my_chip8.memory[0x53]);
+    println!("0x54: {}", my_chip8.memory[0x54]);
+    //DEBUG
 
     'running: loop {
         for event in event_pump.poll_iter() {
