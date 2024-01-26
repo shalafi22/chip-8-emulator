@@ -1,7 +1,9 @@
 use std::{fs::File, io::{BufReader, Error, Read}};
-
-use crate::draw_display_to_window;
+use sdl2::pixels::Color;
+use sdl2::rect;
 use sdl2::render::WindowCanvas;
+use rand::Rng;
+
 
 pub struct Chip8 {
     //The main memory of the machine, 4KB
@@ -26,7 +28,10 @@ pub struct Chip8 {
     pub stack: [u16; 16],
 
     //Display
-    pub display: Chip8Display
+    pub display: Chip8Display,
+
+    //Canvas
+    pub canvas: WindowCanvas,
 }
 
 //TODO: pixels represented as enum with variants On, Off.
@@ -35,8 +40,14 @@ pub struct Chip8Display {
     pub pixels: [[u8; 8];32]
 }
 
+impl Chip8Display {
+    pub fn clear(&mut self) {
+        self.pixels = [[0; 8]; 32];
+    }
+}
+
 impl Chip8 {
-    pub fn new_default() -> Chip8 {
+    pub fn new_default(canvas: WindowCanvas) -> Chip8 {
         let memory: [u8; 4096] = [0; 4096];
         let Vx: [u8; 16] = [0; 16];
         let I: u16 = 0;
@@ -47,7 +58,7 @@ impl Chip8 {
         let stack: [u16; 16] = [0; 16];
         let display: Chip8Display = Chip8Display { pixels: [[0; 8]; 32] };
         let mut chip = Chip8 {
-            memory, Vx, I, delay_timer, sound_timer, PC, SP, stack, display
+            memory, Vx, I, delay_timer, sound_timer, PC, SP, stack, display, canvas
         };
         let mut location = 0x50;
         for sprite in SPRITE_PRESET {
@@ -67,7 +78,7 @@ impl Chip8 {
     }
 
 
-    pub fn draw_sprite_in_mem_to_x_y(&mut self, mut sprite_loc: usize, x: usize, mut y: usize, mut n: usize, canvas: &mut WindowCanvas) {
+    pub fn draw_sprite_in_mem_to_x_y(&mut self, mut sprite_loc: usize, x: usize, mut y: usize, mut n: usize) {
         while n > 0 {
             self.display.pixels[y][x % 8] = self.memory[sprite_loc];
             n -= 1;
@@ -75,7 +86,7 @@ impl Chip8 {
             y += 1;
         }
 
-        draw_display_to_window(canvas, &self.display);
+        self.draw_display_to_window();
     }
 
 
@@ -129,6 +140,200 @@ impl Chip8 {
             print!("{} ", &self.stack[i]);
         }
         print!("\n");
+    }
+
+    pub fn start_device(&mut self) {
+        self.PC = 0x200;
+
+        //TODO: make this a loop
+        for i in 0..1 {
+            let instruction: u16 = ((self.memory[self.PC as usize] as u16) << 8) | (self.memory[(self.PC + 1) as usize]) as u16;
+            self.PC += 2;
+
+            match instruction & 0xF000 {
+                0x0000 => {
+                    if instruction == 0x00E0 {
+                        //clear display
+
+                        self.display.clear();
+                        self.draw_display_to_window();
+                    } else if instruction == 0x00EE {
+                        //return from subroutine
+
+                        self.PC = self.stack[self.SP as usize];
+                        self.SP -= 1;
+                    } else {
+                        println!("Invalid instruction!");
+                    }
+                },
+                0x1000 => {
+                    //set PC to nnn
+
+                    self.PC = instruction & 0x0FFF;
+                },
+                0x2000 => {
+                    //call subroutine at nnn
+
+                    self.SP += 1;
+                    self.stack[self.SP as usize] = self.PC;
+                    self.PC = instruction & 0x0FFF;
+                },
+                0x3000 => {
+                    //3xkk
+                    //if Vx == kk skip instruction
+                    if self.Vx[(instruction & 0x0F00 >> 2) as usize] == ((instruction & 0x00FF) as u8) {
+                        self.PC += 2;
+                    }
+                },
+                0x4000 => {
+                    //4xkk
+                    //if Vx != kk skip instruction
+                    if self.Vx[(instruction & 0x0F00 >> 2) as usize] != ((instruction & 0x00FF) as u8) {
+                        self.PC += 2;
+                    }
+                },
+                0x5000 => {
+                    //5xy0
+                    //if Vx == Vy skip instruction
+                    if instruction & 0x000F == 0 {
+                        if self.Vx[(instruction & 0x0F00) as usize] == self.Vx[(instruction & 0x00F0) as usize] {
+                            self.PC += 2;
+                        }
+                    }
+                },
+                0x6000 => {
+                    //6xkk
+                    //put value kk in register Vx
+                    self.Vx[(instruction & 0x0F00) as usize] = (instruction & 0x00FF) as u8;
+                },
+                0x7000 => {
+                    //7xkk
+                    //set Vx += kk
+                    self.Vx[(instruction & 0x0F00) as usize] += (instruction & 0x00FF) as u8;
+                },
+                0x8000 => {
+                    match instruction & 0x000F {
+                        0x0000 => {
+                            //8xy0
+                            //store the val of Vy in Vx
+                            self.Vx[(instruction & 0x0F00) as usize] = self.Vx[(instruction & 0x00F0) as usize];
+                        },
+                        0x0001 => {
+                            //8xy1
+                            //Vx = Vx | Vy
+                            self.Vx[(instruction & 0x0F00) as usize] = self.Vx[(instruction & 0x0F00) as usize] | self.Vx[(instruction & 0x00F0) as usize]; 
+                        },
+                        0x0002 => {
+                            //8xy2
+                            //Vx = Vx & Vy
+                            self.Vx[(instruction & 0x0F00) as usize] = self.Vx[(instruction & 0x0F00) as usize] & self.Vx[(instruction & 0x00F0) as usize]; 
+                        },
+                        0x0003 => {
+                            //8xy3
+                            //Vx = Vx ^ Vy
+                            self.Vx[(instruction & 0x0F00) as usize] = self.Vx[(instruction & 0x0F00) as usize] ^ self.Vx[(instruction & 0x00F0) as usize]; 
+                        },
+                        0x0004 => {
+                            //8xy4
+                            //Vx = Vx + Vy, VF = carry
+                            let (result, of) = self.Vx[(instruction & 0x0F00) as usize].overflowing_add(self.Vx[(instruction & 0x00F0) as usize]);
+                            self.Vx[(instruction & 0x0F00) as usize] = result;
+                            if of {
+                                self.Vx[0xF] = 1;
+                            } else {
+                                self.Vx[0xF] = 0;
+                            }
+                        },
+                        0x0005 => {
+                            //8vx5
+                            //if Vx > Vy, Vf = 1, else Vf = 0. Vx = Vx - Vy
+                            if self.Vx[(instruction & 0x0F00) as usize] > self.Vx[(instruction & 0x00F0) as usize] {
+                                self.Vx[0x000F] = 1;
+                            } else {
+                                self.Vx[0x000F] = 0;
+                            }
+                            self.Vx[(instruction & 0x0F00) as usize] -= self.Vx[(instruction & 0x00F0) as usize];
+                        },
+                        0x0006 => {
+                            //8xy6
+                            //Vf = Vx & 0x0001, Vx = Vx >> 1
+                            self.Vx[0x000F] = (instruction & 0x0001) as u8;
+                            self.Vx[(instruction & 0x0F00) as usize] = self.Vx[(instruction & 0x0F00) as usize] >> 1; 
+                        },
+                        0x0007 => {
+                            //8vx7
+                            //if Vy > Vx, Vf = 1, else Vf = 0. Vx = Vy - Vx
+                            if self.Vx[(instruction & 0x0F00) as usize] < self.Vx[(instruction & 0x00F0) as usize] {
+                                self.Vx[0x000F] = 1;
+                            } else {
+                                self.Vx[0x000F] = 0;
+                            }
+                            self.Vx[(instruction & 0x00F0) as usize] -= self.Vx[(instruction & 0x0F00) as usize];
+                        },
+                        0x000E => {
+                            //8xyE
+                            //Vf = Vx & 0x1000, Vx = Vx << 1
+                            self.Vx[0x000F] = (instruction & 0x1000) as u8;
+                            self.Vx[(instruction & 0x0F00) as usize] = self.Vx[(instruction & 0x0F00) as usize] << 1; 
+                        },
+                        _ => println!("Invalid instruction")
+                    }
+                },
+                0x9000 => {
+                    //9xy0
+                    //Skip next instruction if Vx != Vy.
+                    if instruction & 0x0000 == 0 {
+                        if self.Vx[(instruction & 0x0F00) as usize] != self.Vx[(instruction & 0x00F0) as usize] {
+                            self.PC += 2;
+                        }
+                    }
+                },
+                0xA000 => {
+                    //set I to nnn
+                    self.I = instruction & 0x0FFF;
+                },
+                0xB000 => {
+                    //The program counter is set to nnn plus the value of V0.
+                    self.PC = (instruction & 0x0FFF) + self.Vx[0] as u16; 
+                },
+                0xC000 => {
+                    //Cxkk
+                    //Set Vx = random byte AND kk
+                    self.Vx[(instruction & 0x0F00) as usize] = rand::thread_rng().gen_range(0..=255) & ((instruction & 0x00FF) as u8); 
+                },
+                0xD000 => {
+
+                },
+                0xE000 => {},
+                0xF000 => {},
+                _ => {println!("Invalid instruction")}
+            }
+        }
+    }
+
+    /// draws the pixels of Chip8isplay to SDL2 canvas
+    /// pixels are represented as 10x10 rectangles
+    /// called by the running loop of canvas window
+    pub fn draw_display_to_window(&mut self) {
+        let mut y = 0;
+        self.canvas.set_draw_color(Color::RGB(100, 225, 0));
+        for row in self.display.pixels {
+            let mut x = 0;
+            for byte in row {
+                let mut mask = 0b10000000;
+                for _i in 0..8 {
+                    if byte & mask == mask {
+                        let rect = rect::Rect::new(x, y, 10, 10);
+                        self.canvas.draw_rect(rect).unwrap();
+                        self.canvas.fill_rect(rect).unwrap();
+                    } 
+                    mask = mask  >> 1;
+                    x += 10;
+                }
+            }
+            y += 10;
+        }
+        self.canvas.present();
     }
 }
 
