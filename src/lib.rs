@@ -34,6 +34,7 @@ pub fn open_window() -> Result<(), std::io::Error> {
         Err(e) => return Err(e),
         _ => {}
     };
+    my_chip8.get_mem_state();
 
     'running: loop {
         for event in event_pump.poll_iter() {

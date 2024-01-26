@@ -101,6 +101,35 @@ impl Chip8 {
         }
         Ok(())
     }
+
+    pub fn get_mem_state(&self) {
+        println!("Mem state:");
+        println!("-------------------------------------------");
+        for i in 0..8 {
+            for j in (512 * i)..(512 * i + 511) {
+                print!("{} ", &self.memory[j]);
+            }
+            print!("\n");
+        }
+        println!("-------------------------------------------");
+    }
+
+    pub fn get_reg_state(&self) {
+        println!("-------------------------------------------");
+        for i in 0..16 {
+            println!("V{}: {}", i, &self.Vx[i]);
+        }
+        println!("I: {}", &self.I);
+        println!("DT: {}", &self.delay_timer);
+        println!("ST: {}", &self.sound_timer);
+        println!("PC: {}", &self.PC);
+        println!("SP: {}", &self.SP);
+        print!("stack: ");
+        for i in 0..16 {
+            print!("{} ", &self.stack[i]);
+        }
+        print!("\n");
+    }
 }
 
 pub struct Sprite {
