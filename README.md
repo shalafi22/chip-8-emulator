@@ -6,11 +6,11 @@ This is a small practice project that aims to emulate a Chip-8 device. For more 
 
 ## How to use?
 
-Although it is still under construction, the emulator can be used:
-    1. I am not sharing the executable yet, you have to have rustc installed on your device.
-    2. Download this repo and compile it with rustc
-    3. At the time of writing, the .ch8 file is hard-coded to ./roms/maze.ch8
-    4. Get a .ch8 binary under this path to get it working
+Although it is still under construction, the emulator can be used:\n
+    1. I am not sharing the executable yet, you have to have rustc installed on your device.\n
+    2. Download this repo and compile it with rustc\n
+    3. At the time of writing, the .ch8 file is hard-coded to ./roms/maze.ch8\n
+    4. Get a .ch8 binary under this path to get it working\n
 
 ## Requirements:
 
