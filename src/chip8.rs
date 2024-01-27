@@ -36,13 +36,28 @@ pub struct Chip8 {
 
 //TODO: pixels represented as enum with variants On, Off.
 //      Display is [[Pixel; 64]; 32]
+#[derive(Copy, Clone)]
+pub enum Pixel {
+    On,
+    Off
+}
+
+impl Pixel {
+    fn is_on(&self) -> bool {
+        match self {
+            Pixel::On => true,
+            Pixel::Off => false
+        }
+    }
+}
+
 pub struct Chip8Display {
-    pub pixels: [[u8; 8];32]
+    pub pixels: [[Pixel; 64];32]
 }
 
 impl Chip8Display {
     pub fn clear(&mut self) {
-        self.pixels = [[0; 8]; 32];
+        self.pixels = [[Pixel::Off; 64]; 32];
     }
 }
 
@@ -56,7 +71,7 @@ impl Chip8 {
         let PC: u16 = 0;
         let SP: u8 = 0;
         let stack: [u16; 16] = [0; 16];
-        let display: Chip8Display = Chip8Display { pixels: [[0; 8]; 32] };
+        let display: Chip8Display = Chip8Display { pixels: [[Pixel::Off; 64]; 32] };
         let mut chip = Chip8 {
             memory, Vx, I, delay_timer, sound_timer, PC, SP, stack, display, canvas
         };
@@ -78,12 +93,23 @@ impl Chip8 {
     }
 
 
-    pub fn draw_sprite_in_mem_to_x_y(&mut self, mut sprite_loc: usize, x: usize, mut y: usize, mut n: usize) {
+    pub fn draw_sprite_in_mem_to_x_y(&mut self, mut sprite_loc: usize, mut x: usize, mut y: usize, mut n: usize) {
+        let mut current_byte = self.memory[sprite_loc];
         while n > 0 {
-            self.display.pixels[y][x % 8] = self.memory[sprite_loc];
-            n -= 1;
-            sprite_loc += 1;
+            let mut mask = 0x80;
+            while mask != 0 {
+                if current_byte & mask == mask {
+                    self.display.pixels[y][x] = match self.display.pixels[y][x] {
+                        Pixel::Off => Pixel::On,
+                        Pixel::On => Pixel::Off
+                    }
+                }
+                mask >> 1;
+                x += 1;
+            }
             y += 1;
+            sprite_loc += 1;
+            current_byte = self.memory[sprite_loc];
         }
 
         self.draw_display_to_window();
@@ -319,15 +345,13 @@ impl Chip8 {
         self.canvas.set_draw_color(Color::RGB(100, 225, 0));
         for row in self.display.pixels {
             let mut x = 0;
-            for byte in row {
-                let mut mask = 0b10000000;
+            for pixel in row {
                 for _i in 0..8 {
-                    if byte & mask == mask {
+                    if pixel.is_on() {
                         let rect = rect::Rect::new(x, y, 10, 10);
                         self.canvas.draw_rect(rect).unwrap();
                         self.canvas.fill_rect(rect).unwrap();
                     } 
-                    mask = mask  >> 1;
                     x += 10;
                 }
             }

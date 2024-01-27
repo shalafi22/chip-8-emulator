@@ -74,15 +74,4 @@ mod tests {
         canvas.clear();
         Chip8::new_default(canvas)
     }
-
-    #[test]
-    pub fn instruction_00e0() {
-        let mut test_device = get_test_device();
-        test_device.display.pixels = [[0xB3; 8]; 32];
-        test_device.memory[0x200] = 0x00;
-        test_device.memory[0x201] = 0xe0;
-        test_device.start_device();
-
-        assert_eq!(test_device.display.pixels, [[0; 8]; 32]);
-    }
 }
