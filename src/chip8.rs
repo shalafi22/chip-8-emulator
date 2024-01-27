@@ -172,7 +172,7 @@ impl Chip8 {
     pub fn start_device(&mut self) {
         self.PC = 0x200;
         //TODO: make this a loop
-        for i in 0..10 {
+        loop {
             let instruction: u16 = ((self.memory[self.PC as usize] as u16) << 8) | (self.memory[(self.PC + 1) as usize]) as u16;
             
             self.PC += 2;
