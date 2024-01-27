@@ -62,8 +62,14 @@ pub fn handle_args(mut args: impl Iterator<Item = String>) -> Result<Config, &'s
         None => return Err("No filename provided!")
     };
 
-    let is_debug = env::var("CH8_DEBUG").is_ok();
-    println!("IS_DEBUG: {}", is_debug);
+    let is_debug = match env::var("CH8_DEBUG") {
+        Ok(val) => {
+            val == "1"
+        },
+        Err(_) => {
+            false
+        }
+    };
 
     Ok(Config::build(&filename, is_debug))
 }

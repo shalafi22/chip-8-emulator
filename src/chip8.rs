@@ -178,12 +178,12 @@ impl Chip8 {
         if is_debug {
             self.start_debug(event_pump);
         }else {
-            self.start_loop();
+            self.start_loop(event_pump);
         }
         Ok(())
     }
 
-    fn start_loop(&mut self) {
+    fn start_loop(&mut self, mut event_pump: EventPump) {
         'running: loop {
             let instruction: u16 = ((self.memory[self.PC as usize] as u16) << 8) | (self.memory[(self.PC + 1) as usize]) as u16;
             
@@ -195,6 +195,17 @@ impl Chip8 {
             };
             
             thread::sleep(Duration::new(0, 1_000_000));
+        }
+        println!("Execution finished, press space to leave");
+        'exit: loop {
+            for event in event_pump.poll_iter() {
+                match event {
+                    Event::KeyDown { keycode: Some(Keycode::Space), .. } => {
+                        break 'exit;
+                    },
+                    _ => {}
+                }
+            }
         }
     }
 
@@ -214,13 +225,16 @@ impl Chip8 {
                             instruction::InstructionResult::BreakLoop => break 'running,
                             instruction::InstructionResult::Ok => {}
                         };
-                        println!("Executed instruction: {:#04x}, at mem loc: {:#04x}", cur_instruction, self.PC);
+                        println!("Executed instruction: {:#04x}, at mem loc: {:#04x}", cur_instruction, self.PC - 2);
                     },
                     Event::KeyDown { keycode: Some(Keycode::M), .. } => {
                         self.get_mem_state();
                     },
                     Event::KeyDown { keycode: Some(Keycode::Y), .. } => {
                         self.get_reg_state();
+                    },
+                    Event::KeyDown { keycode: Some(Keycode::K), .. } => {
+                        println!("Current instruction: {}, at mem loc: {}", self.memory[self.PC as usize], self.PC);
                     },
                     _ => {}
                 }

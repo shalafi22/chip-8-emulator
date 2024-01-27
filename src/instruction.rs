@@ -1,3 +1,5 @@
+
+
 use crate::Chip8;
 use rand::Rng;
 
@@ -113,7 +115,8 @@ impl Chip8 {
                         } else {
                             self.Vx[0x000F] = 0;
                         }
-                        self.Vx[((instruction & 0x0F00) >> 8) as usize] -= self.Vx[((instruction & 0x00F0) >> 4) as usize];
+                        
+                        self.Vx[((instruction & 0x0F00) >> 8) as usize] = u8::wrapping_sub(self.Vx[((instruction & 0x0F00) >> 8) as usize], self.Vx[((instruction & 0x00F0) >> 4) as usize]);
                     },
                     0x0006 => {
                         //8xy6
@@ -129,13 +132,13 @@ impl Chip8 {
                         } else {
                             self.Vx[0x000F] = 0;
                         }
-                        self.Vx[((instruction & 0x00F0) >> 4) as usize] -= self.Vx[((instruction & 0x0F00) >> 8) as usize];
+                        self.Vx[((instruction & 0x00F0) >> 4) as usize] = u8::wrapping_sub(self.Vx[((instruction & 0x00F0) >> 8) as usize], self.Vx[((instruction & 0x0F00) >> 8) as usize]);
                     },
                     0x000E => {
                         //8xyE
                         //Vf = Vx & 0x1000, Vx = Vx << 1
                         self.Vx[0x000F] = (self.Vx[((instruction & 0x0F00) >> 8) as usize] & 0x80) >> 7;
-                        self.Vx[(instruction & 0x0F00) as usize] = self.Vx[(instruction & 0x0F00) as usize] << 1; 
+                        self.Vx[((instruction & 0x0F00) >> 8) as usize] = self.Vx[((instruction & 0x0F00) >> 8) as usize] << 1; 
                     },
                     _ => println!("Invalid instruction at mem: {}, {:#04x}", self.PC, instruction)
                 }
