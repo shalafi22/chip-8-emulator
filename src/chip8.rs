@@ -1,5 +1,5 @@
 use std::{fs::File, io::{BufReader, Error, Read}, thread, time::{Instant, Duration}};
-use sdl2::pixels::Color;
+use sdl2::{event::Event, keyboard::Keycode, pixels::Color, EventPump};
 use sdl2::rect;
 use sdl2::render::WindowCanvas;
 
@@ -156,10 +156,10 @@ impl Chip8 {
         for i in 0..16 {
             println!("V{}: {}", i, &self.Vx[i]);
         }
-        println!("I: {}", &self.I);
+        println!("I: {:#04x}", &self.I);
         println!("DT: {}", &self.delay_timer);
         println!("ST: {}", &self.sound_timer);
-        println!("PC: {}", &self.PC);
+        println!("PC: {:#04x}", &self.PC);
         println!("SP: {}", &self.SP);
         print!("stack: ");
         for i in 0..16 {
@@ -168,13 +168,22 @@ impl Chip8 {
         print!("\n");
     }
 
-    pub fn start_device(&mut self, filename: &str) -> Result<(), Error> {
+    pub fn start_device(&mut self, filename: &str, is_debug: bool, event_pump: EventPump) -> Result<(), Error> {
         match self.load_file_to_mem(&filename) {
             Err(e) => return Err(e),
             _ => {}
         };
         self.PC = 0x200;
-        //TODO: make this a loop
+
+        if is_debug {
+            self.start_debug(event_pump);
+        }else {
+            self.start_loop();
+        }
+        Ok(())
+    }
+
+    fn start_loop(&mut self) {
         'running: loop {
             let instruction: u16 = ((self.memory[self.PC as usize] as u16) << 8) | (self.memory[(self.PC + 1) as usize]) as u16;
             
@@ -187,7 +196,36 @@ impl Chip8 {
             
             thread::sleep(Duration::new(0, 1_000_000));
         }
-        Ok(())
+    }
+
+    fn start_debug(&mut self, mut event_pump: EventPump) {
+        'running: loop {
+            
+            let cur_instruction: u16 = ((self.memory[self.PC as usize] as u16) << 8) | (self.memory[(self.PC + 1) as usize]) as u16;
+            for event in event_pump.poll_iter() {
+                match event {
+                    Event::Quit {..} |
+                    Event::KeyDown { keycode: Some(Keycode::Escape), .. } => {
+                        break 'running
+                    },
+                    Event::KeyDown { keycode: Some(Keycode::Right), ..} => {
+                        self.PC += 2;
+                        match self.decode_execute_instruction(cur_instruction) {
+                            instruction::InstructionResult::BreakLoop => break 'running,
+                            instruction::InstructionResult::Ok => {}
+                        };
+                        println!("Executed instruction: {:#04x}, at mem loc: {:#04x}", cur_instruction, self.PC);
+                    },
+                    Event::KeyDown { keycode: Some(Keycode::M), .. } => {
+                        self.get_mem_state();
+                    },
+                    Event::KeyDown { keycode: Some(Keycode::Y), .. } => {
+                        self.get_reg_state();
+                    },
+                    _ => {}
+                }
+            }
+        }
     }
 
     /// draws the pixels of Chip8isplay to SDL2 canvas
