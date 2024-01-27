@@ -171,11 +171,10 @@ impl Chip8 {
 
     pub fn start_device(&mut self) {
         self.PC = 0x200;
-        self.draw_sprite_in_mem_to_x_y(0x50, 0, 0, 5);
-        self.draw_sprite_in_mem_to_x_y(0x55, 10, 0, 5);
         //TODO: make this a loop
         for i in 0..1 {
             let instruction: u16 = ((self.memory[self.PC as usize] as u16) << 8) | (self.memory[(self.PC + 1) as usize]) as u16;
+            
             self.PC += 2;
 
             match instruction & 0xF000 {
@@ -191,7 +190,7 @@ impl Chip8 {
                         self.PC = self.stack[self.SP as usize];
                         self.SP -= 1;
                     } else {
-                        println!("Invalid instruction!");
+                        println!("Invalid instruction at mem: {}, {:#04x}", self.PC, instruction)
                     }
                 },
                 0x1000 => {
@@ -304,7 +303,7 @@ impl Chip8 {
                             self.Vx[0x000F] = (instruction & 0x1000) as u8;
                             self.Vx[(instruction & 0x0F00) as usize] = self.Vx[(instruction & 0x0F00) as usize] << 1; 
                         },
-                        _ => println!("Invalid instruction")
+                        _ => println!("Invalid instruction at mem: {}, {:#04x}", self.PC, instruction)
                     }
                 },
                 0x9000 => {
@@ -330,11 +329,72 @@ impl Chip8 {
                     self.Vx[(instruction & 0x0F00) as usize] = rand::thread_rng().gen_range(0..=255) & ((instruction & 0x00FF) as u8); 
                 },
                 0xD000 => {
-
+                    //Dxyn
+                    //display the n-long sprite at location I to (Vx, Vy)
+                    self.draw_sprite_in_mem_to_x_y(self.I as usize, self.Vx[(instruction & 0x0F00) as usize] as usize, self.Vx[(instruction & 0x00F0) as usize] as usize, (instruction & 0x000F) as usize);
                 },
-                0xE000 => {},
-                0xF000 => {},
-                _ => {println!("Invalid instruction")}
+                0xE000 => {
+                    if instruction & 0x009E == 0x009E {
+                        //Ex9E
+                        //Skip next instruction if key with value Vx is pressed
+
+                    } else if instruction & 0x00A1 == 0x00A1 {
+                        //ExA1
+                        //Skip next instruction if key with value Vx is not pressed
+                    } else {
+                        println!("Invalid instruction at mem: {}, {:#04x}", self.PC, instruction)
+                    }
+                },
+                0xF000 => {
+                    if instruction & 0x0007 == 0x0007 {
+                        //Fx07
+                        //set  Vx = delay timer
+                        self.Vx[(instruction & 0x0F00) as usize] = self.delay_timer;
+                    } else if instruction & 0x000A == 0x000A {
+                        // Wait for a key press, store the value of the key in Vx.
+                        // All execution stops until a key is pressed, then the value of that key is stored in Vx.
+
+                    } else if instruction & 0x0015 == 0x0015 {
+                        // Fx15
+                        // set DT = Vx
+                        self.delay_timer = self.Vx[(instruction & 0x0F00) as usize];
+                    } else if instruction & 0x0018 == 0x0018 {
+                        // Fx18
+                        // Set sound timer = Vx
+                        self.sound_timer = self.Vx[(instruction & 0x0F00) as usize];
+                    } else if instruction & 0x001E == 0x001E {
+                        //Fx1E
+                        //set I += Vx
+                        self.I += self.Vx[(instruction & 0x0F00) as usize] as u16;
+                    } else if instruction & 0x0029 == 0x0029 {
+                        //Fx29
+                        // I = location of sprite for hexadecimal x
+                        self.I = 0x50 + (5 * (instruction & 0x0F00));
+                    } else if instruction & 0x0033 == 0x0033 {
+                        //Fx33
+                        //Store BCD representation of Vx in memory locations I, I+1, and I+2.
+                        let num = self.Vx[(instruction & 0x0F00) as usize];
+                        self.memory[self.I as usize] = num / 100;
+                        self.memory[(self.I + 1) as usize] = (num / 10) % 10;
+                        self.memory[(self.I + 2) as usize] = num % 10;
+                    } else if instruction & 0x0055 == 0x0055 {
+                        //Fx55
+                        //Store registers V0 through Vx in memory starting at location I
+                        for i in 0..=(instruction & 0x0F00) {
+                            self.memory[(self.I + i) as usize] = self.Vx[i as usize];
+                        }
+                    } else if instruction & 0x0065 == 0x0065 {
+                        //Fx65
+                        //Read registers V0 through Vx from memory starting at location I.
+                        for i in 0..=(instruction & 0x0F00) {
+                            self.Vx[i as usize] = self.memory[(self.I + i) as usize];
+                        }
+
+                    } else {
+                        println!("Invalid instruction at mem: {}, {:#04x}", self.PC, instruction)
+                    }
+                },
+                _ => {println!("Invalid instruction at mem: {}, {:#04x}", self.PC, instruction)}
             }
         }
     }
