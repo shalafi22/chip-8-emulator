@@ -4,6 +4,8 @@ use sdl2::rect;
 use sdl2::render::WindowCanvas;
 use rand::Rng;
 
+use crate::get_filename;
+
 
 pub struct Chip8 {
     //The main memory of the machine, 4KB
@@ -34,8 +36,6 @@ pub struct Chip8 {
     pub canvas: WindowCanvas,
 }
 
-//TODO: pixels represented as enum with variants On, Off.
-//      Display is [[Pixel; 64]; 32]
 #[derive(Copy, Clone)]
 pub enum Pixel {
     On,
@@ -118,9 +118,8 @@ impl Chip8 {
 
 
     /// loads .ch8 file under roms to the memory of the emulator
-    pub fn load_file_to_mem(&mut self) -> Result<(), Error> {
-        //TODO: get filename from user
-        let filename = "./roms/maze.ch8";
+    pub fn load_file_to_mem(&mut self, filename: &str) -> Result<(), Error> {
+        let filename = String::from("./roms/") + filename;
         let f = match File::open(filename) {
             Ok(f) => {f},
             Err(e) => {return Err(e)}
@@ -169,7 +168,12 @@ impl Chip8 {
         print!("\n");
     }
 
-    pub fn start_device(&mut self) {
+    pub fn start_device(&mut self) -> Result<(), Error> {
+        let filename = &get_filename();
+        match self.load_file_to_mem(filename) {
+            Err(e) => return Err(e),
+            _ => {}
+        };
         self.PC = 0x200;
         //TODO: make this a loop
         'running: loop {
@@ -399,6 +403,7 @@ impl Chip8 {
                 _ => {println!("Invalid instruction at mem: {}, {:#04x}", self.PC, instruction)}
             }
         }
+        Ok(())
     }
 
     /// draws the pixels of Chip8isplay to SDL2 canvas

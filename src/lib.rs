@@ -27,11 +27,10 @@ pub fn open_window() -> Result<(), std::io::Error> {
     let mut event_pump = sdl_context.event_pump().unwrap();
 
     let mut my_chip8 = Chip8::new_default(canvas);
-    match my_chip8.load_file_to_mem() {
-        Err(e) => return Err(e),
-        _ => {}
+    match my_chip8.start_device() {
+        Err(e) => println!("Error: {}", e),
+        Ok(()) => {}
     };
-    my_chip8.start_device();
 
     'running: loop {
         for event in event_pump.poll_iter() {
@@ -48,6 +47,14 @@ pub fn open_window() -> Result<(), std::io::Error> {
         std::thread::sleep(Duration::new(0, 1_000_000_000u32 / 60));
     }
     Ok(())
+}
+
+pub fn get_filename() -> String {
+    println!("Enter filename for ROM: ");
+    let mut filename = String::new();
+    std::io::stdin().read_line(&mut filename).expect("Failed to read line");
+    filename = String::from(filename.trim());
+    filename
 }
 
 
