@@ -96,7 +96,7 @@ impl Chip8 {
     pub fn draw_sprite_in_mem_to_x_y(&mut self, mut sprite_loc: usize, mut x: usize, mut y: usize, mut n: usize) {
         let mut current_byte = self.memory[sprite_loc];
         while n > 0 {
-            let mut mask = 0x80;
+            let mut mask = 0b10000000;
             while mask != 0 {
                 if current_byte & mask == mask {
                     self.display.pixels[y][x] = match self.display.pixels[y][x] {
@@ -110,6 +110,7 @@ impl Chip8 {
             y += 1;
             sprite_loc += 1;
             current_byte = self.memory[sprite_loc];
+            n -= 1;
         }
 
         self.draw_display_to_window();
@@ -171,6 +172,8 @@ impl Chip8 {
     pub fn start_device(&mut self) {
         self.PC = 0x200;
 
+        self.draw_sprite_in_mem_to_x_y(0x50, 0, 0, 5);
+        self.draw_sprite_in_mem_to_x_y(0x55, 10, 0, 5);
         //TODO: make this a loop
         for i in 0..1 {
             let instruction: u16 = ((self.memory[self.PC as usize] as u16) << 8) | (self.memory[(self.PC + 1) as usize]) as u16;
