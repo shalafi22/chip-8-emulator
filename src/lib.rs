@@ -5,6 +5,7 @@ use std::time::Duration;
 
 
 pub mod chip8;
+pub mod instruction;
 use crate::chip8::Chip8;
 
 
