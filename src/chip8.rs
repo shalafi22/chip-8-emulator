@@ -172,7 +172,7 @@ impl Chip8 {
     pub fn start_device(&mut self) {
         self.PC = 0x200;
         //TODO: make this a loop
-        loop {
+        'running: loop {
             let instruction: u16 = ((self.memory[self.PC as usize] as u16) << 8) | (self.memory[(self.PC + 1) as usize]) as u16;
             
             self.PC += 2;
@@ -195,7 +195,9 @@ impl Chip8 {
                 },
                 0x1000 => {
                     //set PC to nnn
-
+                    if self.PC - 2 == instruction & 0x0FFF {
+                        break 'running;
+                    }
                     self.PC = instruction & 0x0FFF;
                 },
                 0x2000 => {
@@ -396,7 +398,6 @@ impl Chip8 {
                 },
                 _ => {println!("Invalid instruction at mem: {}, {:#04x}", self.PC, instruction)}
             }
-            println!("Finished instruction: {:#04x}", instruction);
         }
     }
 
