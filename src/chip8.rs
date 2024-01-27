@@ -93,24 +93,24 @@ impl Chip8 {
     }
 
 
-    pub fn draw_sprite_in_mem_to_x_y(&mut self, mut sprite_loc: usize, mut x: usize, mut y: usize, mut n: usize) {
+    pub fn draw_sprite_in_mem_to_x_y(&mut self, sprite_loc: usize, mut x: usize, mut y: usize, n: usize) {
         let mut current_byte = self.memory[sprite_loc];
-        while n > 0 {
+        let starting_x = x;
+        for i in 0..n {
+            current_byte = self.memory[sprite_loc + i];
+            x = starting_x;
             let mut mask = 0b10000000;
             while mask != 0 {
                 if current_byte & mask == mask {
-                    self.display.pixels[y][x] = match self.display.pixels[y][x] {
+                    self.display.pixels[y][x % 64] = match self.display.pixels[y][x % 64] {
                         Pixel::Off => Pixel::On,
                         Pixel::On => Pixel::Off
-                    }
+                    } 
                 }
-                mask >> 1;
+                mask = mask >> 1;
                 x += 1;
             }
             y += 1;
-            sprite_loc += 1;
-            current_byte = self.memory[sprite_loc];
-            n -= 1;
         }
 
         self.draw_display_to_window();
@@ -171,7 +171,6 @@ impl Chip8 {
 
     pub fn start_device(&mut self) {
         self.PC = 0x200;
-
         self.draw_sprite_in_mem_to_x_y(0x50, 0, 0, 5);
         self.draw_sprite_in_mem_to_x_y(0x55, 10, 0, 5);
         //TODO: make this a loop
@@ -349,14 +348,12 @@ impl Chip8 {
         for row in self.display.pixels {
             let mut x = 0;
             for pixel in row {
-                for _i in 0..8 {
-                    if pixel.is_on() {
-                        let rect = rect::Rect::new(x, y, 10, 10);
-                        self.canvas.draw_rect(rect).unwrap();
-                        self.canvas.fill_rect(rect).unwrap();
-                    } 
-                    x += 10;
-                }
+                if pixel.is_on() {
+                    let rect = rect::Rect::new(x, y, 10, 10);
+                    self.canvas.draw_rect(rect).unwrap();
+                    self.canvas.fill_rect(rect).unwrap();
+                } 
+                x += 10;
             }
             y += 10;
         }
