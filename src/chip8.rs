@@ -1,4 +1,4 @@
-use std::{fs::File, io::{BufReader, Error, Read}, thread, time::{Instant, Duration}};
+use std::{fs::File, io::{BufReader, Error, Read}, thread, time::Duration};
 use sdl2::{event::Event, keyboard::Keycode, pixels::Color, EventPump};
 use sdl2::rect;
 use sdl2::render::WindowCanvas;

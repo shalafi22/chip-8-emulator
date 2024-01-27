@@ -1,8 +1,5 @@
 use sdl2::pixels::Color;
-use sdl2::event::Event;
-use sdl2::keyboard::Keycode;
 use std::env;
-use std::time::Duration;
 
 
 pub mod chip8;
@@ -66,7 +63,7 @@ pub fn handle_args(mut args: impl Iterator<Item = String>) -> Result<Config, &'s
     };
 
     let is_debug = env::var("CH8_DEBUG").is_ok();
-
+    println!("IS_DEBUG: {}", is_debug);
 
     Ok(Config::build(&filename, is_debug))
 }

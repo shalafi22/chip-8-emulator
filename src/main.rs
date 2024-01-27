@@ -6,3 +6,7 @@ fn main() {
         _ => {}
     };
 }
+
+
+//TODO:
+// update readme for debug mode
