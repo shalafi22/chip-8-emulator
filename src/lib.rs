@@ -11,7 +11,12 @@ use crate::chip8::Chip8;
 /// open sdl2 window and create a new chip8 display
 /// draw display to screen in a loop
 /// display might onl be updated when necessary instead of 60 FPS for better optimization
-pub fn open_window() -> Result<(), std::io::Error> {
+pub fn open_window(args: impl Iterator<Item = String>) -> Result<(), &'static str> {
+    let filename = match get_filename(args) {
+        Ok(f) => f,
+        Err(e) => return Err(e)
+    };
+
     let sdl_context = sdl2::init().unwrap();
     let video_subsystem = sdl_context.video().unwrap();
 
@@ -27,7 +32,7 @@ pub fn open_window() -> Result<(), std::io::Error> {
     let mut event_pump = sdl_context.event_pump().unwrap();
 
     let mut my_chip8 = Chip8::new_default(canvas);
-    match my_chip8.start_device() {
+    match my_chip8.start_device(&filename) {
         Err(e) => println!("Error: {}", e),
         Ok(()) => {}
     };
@@ -49,12 +54,13 @@ pub fn open_window() -> Result<(), std::io::Error> {
     Ok(())
 }
 
-pub fn get_filename() -> String {
-    println!("Enter filename for ROM: ");
-    let mut filename = String::new();
-    std::io::stdin().read_line(&mut filename).expect("Failed to read line");
-    filename = String::from(filename.trim());
-    filename
+pub fn get_filename(mut args: impl Iterator<Item = String>) -> Result<String, &'static str> {
+    args.next();
+    let filename = match args.next() {
+        Some(s) => s,
+        None => return Err("No filename provided!")
+    };
+    Ok(filename)
 }
 
 

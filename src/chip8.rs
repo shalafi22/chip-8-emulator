@@ -1,4 +1,4 @@
-use std::{fs::File, io::{BufReader, Error, Read}, iter::Inspect};
+use std::{fs::File, io::{BufReader, Error, Read}, thread, time::{Instant, Duration}};
 use sdl2::pixels::Color;
 use sdl2::rect;
 use sdl2::render::WindowCanvas;
@@ -168,9 +168,8 @@ impl Chip8 {
         print!("\n");
     }
 
-    pub fn start_device(&mut self) -> Result<(), Error> {
-        let filename = &get_filename();
-        match self.load_file_to_mem(filename) {
+    pub fn start_device(&mut self, filename: &str) -> Result<(), Error> {
+        match self.load_file_to_mem(&filename) {
             Err(e) => return Err(e),
             _ => {}
         };
@@ -402,6 +401,7 @@ impl Chip8 {
                 },
                 _ => {println!("Invalid instruction at mem: {}, {:#04x}", self.PC, instruction)}
             }
+            thread::sleep(Duration::new(0, 1_000_000));
         }
         Ok(())
     }
