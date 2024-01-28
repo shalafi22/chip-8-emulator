@@ -1,5 +1,5 @@
-use std::{fs::File, io::{BufReader, Error, Read}, thread, time::Duration};
-use sdl2::{event::Event, keyboard::Keycode, pixels::Color, EventPump};
+use std::{fs::File, io::{BufReader, Error, Read}, thread, time::{Duration, Instant}};
+use sdl2::{audio::AudioDevice, event::Event, keyboard::Keycode, pixels::Color, sys::__time_t_defined, EventPump};
 use sdl2::rect;
 use sdl2::render::WindowCanvas;
 
@@ -168,7 +168,7 @@ impl Chip8 {
         print!("\n");
     }
 
-    pub fn start_device(&mut self, filename: &str, is_debug: bool, event_pump: EventPump) -> Result<(), Error> {
+    pub fn start_device(&mut self, filename: &str, is_debug: bool, event_pump: EventPump, audio_device: AudioDevice<crate::SquareWave>) -> Result<(), Error> {
         match self.load_file_to_mem(&filename) {
             Err(e) => return Err(e),
             _ => {}
@@ -178,23 +178,82 @@ impl Chip8 {
         if is_debug {
             self.start_debug(event_pump);
         }else {
-            self.start_loop(event_pump);
+            self.start_loop(event_pump, audio_device);
         }
         Ok(())
     }
 
-    fn start_loop(&mut self, mut event_pump: EventPump) {
+    fn start_loop(&mut self, mut event_pump: EventPump, audio_device: AudioDevice<crate::SquareWave>) {
+        let mut dt_last_dec = Instant::now();
+        let mut st_last_dec = Instant::now();
         'running: loop {
             let instruction: u16 = ((self.memory[self.PC as usize] as u16) << 8) | (self.memory[(self.PC + 1) as usize]) as u16;
             
             self.PC += 2;
 
             match self.decode_execute_instruction(instruction) {
-                instruction::InstructionResult::BreakLoop => break 'running,
+                instruction::InstructionResult::BreakLoop => {
+                    if (self.sound_timer == 0) {
+                        break 'running
+                    } else {
+                        'decay: loop {
+                            let elapsed_time = st_last_dec.elapsed().as_nanos();
+                            let to_dec = elapsed_time * 3 / 50_000_000;
+                            if self.sound_timer > to_dec as u8 {
+                                if to_dec != 0 {
+                                    self.sound_timer -= to_dec as u8;
+                                    st_last_dec = Instant::now();
+                                }
+                            } else {
+                                self.sound_timer = 0;
+                                audio_device.pause();
+                                break 'decay;
+                            }
+                            thread::sleep(Duration::new(0, 1_000_000));
+                        }
+                    }
+                    break 'running;
+                },
+                instruction::InstructionResult::StartDelayTimer => { 
+                    dt_last_dec = Instant::now();
+                },
+                instruction::InstructionResult::StartSoundTimer => {
+                    st_last_dec = Instant::now();
+                    audio_device.resume();
+                },
                 instruction::InstructionResult::Ok => {}
             };
             
+
+            
+
             thread::sleep(Duration::new(0, 1_000_000));
+
+            if self.sound_timer != 0 {
+                let elapsed_time = st_last_dec.elapsed().as_nanos();
+                let to_dec = elapsed_time * 3 / 50_000_000;
+                if self.sound_timer > to_dec as u8 {
+                    if to_dec != 0 {
+                        self.sound_timer -= to_dec as u8;
+                        st_last_dec = Instant::now();
+                    }
+                } else {
+                    self.sound_timer = 0;
+                    audio_device.pause();
+                }
+            }
+            if self.delay_timer != 0 {
+                let elapsed_time = dt_last_dec.elapsed().as_nanos();
+                let to_dec = elapsed_time * 3 / 50_000_000;
+                if self.delay_timer > to_dec as u8 {
+                    if to_dec != 0 {
+                        self.delay_timer -= to_dec as u8;
+                        dt_last_dec = Instant::now();
+                    }
+                } else {
+                    self.delay_timer = 0;
+                }
+            }
         }
         println!("Execution finished, press space to leave");
         'exit: loop {
@@ -223,6 +282,8 @@ impl Chip8 {
                         self.PC += 2;
                         match self.decode_execute_instruction(cur_instruction) {
                             instruction::InstructionResult::BreakLoop => break 'running,
+                            instruction::InstructionResult::StartDelayTimer => {},
+                            instruction::InstructionResult::StartSoundTimer => {},
                             instruction::InstructionResult::Ok => {}
                         };
                         println!("Executed instruction: {:#04x}, at mem loc: {:#04x}", cur_instruction, self.PC - 2);

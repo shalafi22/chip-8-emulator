@@ -6,6 +6,8 @@ use rand::Rng;
 
 pub enum InstructionResult {
     BreakLoop,
+    StartDelayTimer,
+    StartSoundTimer,
     Ok
 }
 
@@ -72,7 +74,7 @@ impl Chip8 {
             0x7000 => {
                 //7xkk
                 //set Vx += kk
-                self.Vx[((instruction & 0x0F00) >> 8) as usize] += (instruction & 0x00FF) as u8;
+                self.Vx[((instruction & 0x0F00) >> 8) as usize] = u8::wrapping_add(self.Vx[((instruction & 0x0F00) >> 8) as usize], (instruction & 0x00FF) as u8);
             },
             0x8000 => {
                 match instruction & 0x000F {
@@ -183,7 +185,7 @@ impl Chip8 {
                 }
             },
             0xF000 => {
-                if instruction & 0x0007 == 0x0007 {
+                if instruction & 0x00FF == 0x0007 {
                     //Fx07
                     //set  Vx = delay timer
                     self.Vx[((instruction & 0x0F00) >> 8) as usize] = self.delay_timer;
@@ -195,10 +197,12 @@ impl Chip8 {
                     // Fx15
                     // set DT = Vx
                     self.delay_timer = self.Vx[((instruction & 0x0F00) >> 8) as usize];
+                    return InstructionResult::StartDelayTimer;
                 } else if instruction & 0x00FF == 0x0018 {
                     // Fx18
                     // Set sound timer = Vx
                     self.sound_timer = self.Vx[((instruction & 0x0F00) >> 8) as usize];
+                    return InstructionResult::StartSoundTimer;
                 } else if instruction & 0x00FF == 0x001E {
                     //Fx1E
                     //set I += Vx
