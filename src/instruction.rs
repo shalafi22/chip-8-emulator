@@ -121,7 +121,7 @@ impl Chip8 {
                     0x0006 => {
                         //8xy6
                         //Vf = Vx & 0x0001, Vx = Vx >> 1
-                        self.Vx[0x000F] = (instruction & 0x0001) as u8;
+                        self.Vx[0x000F] = (self.Vx[((instruction & 0x0F00) >> 8) as usize] & 0x0001) as u8;
                         self.Vx[((instruction & 0x0F00) >> 8) as usize] = self.Vx[((instruction & 0x0F00) >> 8) as usize] >> 1; 
                     },
                     0x0007 => {
@@ -187,40 +187,40 @@ impl Chip8 {
                     //Fx07
                     //set  Vx = delay timer
                     self.Vx[((instruction & 0x0F00) >> 8) as usize] = self.delay_timer;
-                } else if instruction & 0x000A == 0x000A {
+                } else if instruction & 0x00FF == 0x000A {
                     // Wait for a key press, store the value of the key in Vx.
                     // All execution stops until a key is pressed, then the value of that key is stored in Vx.
 
-                } else if instruction & 0x0015 == 0x0015 {
+                } else if instruction & 0x00FF == 0x0015 {
                     // Fx15
                     // set DT = Vx
                     self.delay_timer = self.Vx[((instruction & 0x0F00) >> 8) as usize];
-                } else if instruction & 0x0018 == 0x0018 {
+                } else if instruction & 0x00FF == 0x0018 {
                     // Fx18
                     // Set sound timer = Vx
                     self.sound_timer = self.Vx[((instruction & 0x0F00) >> 8) as usize];
-                } else if instruction & 0x001E == 0x001E {
+                } else if instruction & 0x00FF == 0x001E {
                     //Fx1E
                     //set I += Vx
                     self.I += self.Vx[((instruction & 0x0F00) >> 8) as usize] as u16;
-                } else if instruction & 0x0029 == 0x0029 {
+                } else if instruction & 0x00FF == 0x0029 {
                     //Fx29
                     // I = location of sprite for hexadecimal x
                     self.I = 0x50 + (5 * ((instruction & 0x0F00) >> 8));
-                } else if instruction & 0x0033 == 0x0033 {
+                } else if instruction & 0x00FF == 0x0033 {
                     //Fx33
                     //Store BCD representation of Vx in memory locations I, I+1, and I+2.
                     let num = self.Vx[((instruction & 0x0F00) >> 8) as usize];
                     self.memory[self.I as usize] = num / 100;
                     self.memory[(self.I + 1) as usize] = (num / 10) % 10;
                     self.memory[(self.I + 2) as usize] = num % 10;
-                } else if instruction & 0x0055 == 0x0055 {
+                } else if instruction & 0x00FF == 0x0055 {
                     //Fx55
                     //Store registers V0 through Vx in memory starting at location I
                     for i in 0..=((instruction & 0x0F00) >> 8) {
                         self.memory[(self.I + i) as usize] = self.Vx[i as usize];
                     }
-                } else if instruction & 0x0065 == 0x0065 {
+                } else if instruction & 0x00FF == 0x0065 {
                     //Fx65
                     //Read registers V0 through Vx from memory starting at location I.
                     for i in 0..=((instruction & 0x0F00) >> 8) {

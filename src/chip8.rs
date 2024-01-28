@@ -234,7 +234,7 @@ impl Chip8 {
                         self.get_reg_state();
                     },
                     Event::KeyDown { keycode: Some(Keycode::K), .. } => {
-                        println!("Current instruction: {}, at mem loc: {}", self.memory[self.PC as usize], self.PC);
+                        println!("Current instruction: {:#04x}, at mem loc: {:#04x}", cur_instruction, self.PC);
                     },
                     _ => {}
                 }
