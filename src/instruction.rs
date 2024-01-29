@@ -8,6 +8,9 @@ pub enum InstructionResult {
     BreakLoop,
     StartDelayTimer,
     StartSoundTimer,
+    SkipIfPressed(u8),
+    SkipIfNotPressed(u8),
+    WaitForKey(u8),
     Ok
 }
 
@@ -176,10 +179,11 @@ impl Chip8 {
                 if instruction & 0x009E == 0x009E {
                     //Ex9E
                     //Skip next instruction if key with value Vx is pressed
-
+                    return InstructionResult::SkipIfPressed(((instruction & 0x0F00) >> 8) as u8);
                 } else if instruction & 0x00A1 == 0x00A1 {
                     //ExA1
                     //Skip next instruction if key with value Vx is not pressed
+                    return InstructionResult::SkipIfNotPressed(((instruction & 0x0F00) >> 8) as u8);
                 } else {
                     println!("Invalid instruction at mem: {}, {:#04x}", self.PC, instruction)
                 }
@@ -192,7 +196,7 @@ impl Chip8 {
                 } else if instruction & 0x00FF == 0x000A {
                     // Wait for a key press, store the value of the key in Vx.
                     // All execution stops until a key is pressed, then the value of that key is stored in Vx.
-
+                    return InstructionResult::WaitForKey(((instruction & 0x0F00) >> 8) as u8);
                 } else if instruction & 0x00FF == 0x0015 {
                     // Fx15
                     // set DT = Vx

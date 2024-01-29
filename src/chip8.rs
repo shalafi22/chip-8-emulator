@@ -1,5 +1,6 @@
-use std::{fs::File, io::{BufReader, Error, Read}, thread, time::{Duration, Instant}};
-use sdl2::{audio::AudioDevice, event::Event, keyboard::Keycode, pixels::Color, sys::__time_t_defined, EventPump};
+use core::panic;
+use std::{collections::HashMap, fs::File, io::{BufReader, Error, Read}, thread, time::{Duration, Instant}};
+use sdl2::{audio::AudioDevice, event::{self, Event}, keyboard::Keycode, pixels::Color, sys::{KeyCode, __time_t_defined}, EventPump};
 use sdl2::rect;
 use sdl2::render::WindowCanvas;
 
@@ -102,7 +103,7 @@ impl Chip8 {
             let mut mask = 0b10000000;
             while mask != 0 {
                 if current_byte & mask == mask {
-                    self.display.pixels[y][x % 64] = match self.display.pixels[y][x % 64] {
+                    self.display.pixels[y % 32][x % 64] = match self.display.pixels[y % 32][x % 64] {
                         Pixel::Off => Pixel::On,
                         Pixel::On => Pixel::Off
                     } 
@@ -186,6 +187,8 @@ impl Chip8 {
     fn start_loop(&mut self, mut event_pump: EventPump, audio_device: AudioDevice<crate::SquareWave>) {
         let mut dt_last_dec = Instant::now();
         let mut st_last_dec = Instant::now();
+        let mut wait_for_key_flag = false;
+        let mut store_reg = 0;
         'running: loop {
             let instruction: u16 = ((self.memory[self.PC as usize] as u16) << 8) | (self.memory[(self.PC + 1) as usize]) as u16;
             
@@ -221,13 +224,73 @@ impl Chip8 {
                     st_last_dec = Instant::now();
                     audio_device.resume();
                 },
-                instruction::InstructionResult::Ok => {}
+                instruction::InstructionResult::SkipIfPressed(key) => {
+                    let qkeycode = KEYPAD_VALUES[key as usize];
+                    'search: for event in event_pump.poll_iter() {
+                        match event {
+                            Event::KeyDown { keycode: qkeycode, .. } => {
+                                self.PC += 2;
+                                break 'search;
+                            },
+                            _ => {}
+                        }
+                    }
+                },
+                instruction::InstructionResult::SkipIfNotPressed(key) => {
+                    let mut flag = false;
+                    let qkeycode = KEYPAD_VALUES[key as usize];
+                    'search: for event in event_pump.poll_iter() {
+                        match event {
+                            Event::KeyDown { keycode: Some(qkeycode), .. } => {
+                                flag = true;
+                                break 'search;
+                            },
+                            _ => {}
+                        }
+                    }
+                    if !flag {
+                        self.PC += 2;
+                    }
+                },
+                instruction::InstructionResult::WaitForKey(reg) => {
+                    self.PC -= 2;
+                    wait_for_key_flag = true;
+                    store_reg = reg;
+                },
+                instruction::InstructionResult::Ok => {
+                    for event in event_pump.poll_iter() {
+                        match event {
+                            Event::KeyDown { keycode: Some(Keycode::Escape), .. } => {
+                                break 'running;
+                            },
+                            _ => {}
+                        }
+                    }
+                }
             };
             
 
             
 
-            thread::sleep(Duration::new(0, 1_000_000));
+            thread::sleep(Duration::new(0, 100_000));
+
+            if wait_for_key_flag {
+                for event in event_pump.poll_iter() {
+                    match event {
+                        Event::KeyDown { keycode: Some(Keycode::Escape), .. } => {
+                            wait_for_key_flag = false;
+                            break 'running;
+                        },
+                        Event::KeyDown {keycode: Some(k), ..} => {
+                            
+                            self.Vx[store_reg as usize] = KEYPAD_VALUES.iter().position(|&key| key == k ).unwrap() as u8;
+                            wait_for_key_flag = false;
+                            self.PC += 2;
+                        },
+                        _ => {}
+                    }
+                }
+            }
 
             if self.sound_timer != 0 {
                 let elapsed_time = st_last_dec.elapsed().as_nanos();
@@ -284,6 +347,9 @@ impl Chip8 {
                             instruction::InstructionResult::BreakLoop => break 'running,
                             instruction::InstructionResult::StartDelayTimer => {},
                             instruction::InstructionResult::StartSoundTimer => {},
+                            instruction::InstructionResult::SkipIfPressed(key) => {todo!()},
+                            instruction::InstructionResult::SkipIfNotPressed(key) => {todo!()},
+                            instruction::InstructionResult::WaitForKey(reg) => {todo!()},
                             instruction::InstructionResult::Ok => {}
                         };
                         println!("Executed instruction: {:#04x}, at mem loc: {:#04x}", cur_instruction, self.PC - 2);
@@ -351,7 +417,24 @@ const F_SPRITE: Sprite = Sprite {bytes: [0xF0, 0x80, 0xF0, 0x80, 0x80, 0, 0, 0, 
 const SPRITE_PRESET: [Sprite; 16] = [ZERO_SPRITE, ONE_SPRITE, TWO_SPRITE, THREE_SPRITE, FOUR_SPRITE, FIVE_SPRITE, SIX_SPRITE, SEVEN_SPRITE,
                                     EIGHT_SPRITE, NINE_SPRITE, A_SPRITE, B_SPRITE, C_SPRITE, D_SPRITE, E_SPRITE, F_SPRITE];
 
-
+const KEYPAD_VALUES: [Keycode; 16] = [
+    Keycode::X,
+    Keycode::Num1,
+    Keycode::Num2,
+    Keycode::Num3,
+    Keycode::Q,
+    Keycode::W,
+    Keycode::E,
+    Keycode::A,
+    Keycode::S,
+    Keycode::D,
+    Keycode::Z,
+    Keycode::C,
+    Keycode::Num4,
+    Keycode::R,
+    Keycode::F,
+    Keycode::V
+];
 
 
 
