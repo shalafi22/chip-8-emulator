@@ -5,6 +5,7 @@ use sdl2::audio::{AudioCallback, AudioSpecDesired};
 
 pub mod chip8;
 pub mod instruction;
+pub mod constants;
 use crate::chip8::Chip8;
 
 pub struct Config {
